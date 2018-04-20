@@ -193,10 +193,10 @@ class CustomerAPITests(TestCase):
         # Without profile id should return object
         payment_profile = self.api.create_saved_payment(credit_card, address)
         self.assertEqual(service.call_args, None)
-        self.assertEqual(payment_profile._kind, 'CustomerPaymentProfileType')
-        self.assertEqual(payment_profile.payment._kind, 'PaymentType')
-        self.assertEqual(payment_profile.payment.creditCard._kind,
-            'CreditCardType')
+        self.assertEqual(payment_profile.__class__.__name__, 'customerPaymentProfileType')
+        self.assertEqual(payment_profile.payment.__class__.__name__, 'paymentType')
+        self.assertEqual(payment_profile.payment.creditCard.__class__.__name__,
+            'creditCardType')
         self.assertEqual(payment_profile.payment.creditCard.cardNumber,
             '4111111111111111')
         self.assertEqual(payment_profile.payment.creditCard.expirationDate,

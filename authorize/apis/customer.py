@@ -79,7 +79,7 @@ class CustomerAPI(object):
         createCustomerProfile = apicontractsv1.createCustomerProfileRequest()
         createCustomerProfile.merchantAuthentication = self.merchantAuth
         createCustomerProfile.profile = apicontractsv1.customerProfileType()
-        createCustomerProfile.profile.merchantCustomerId = internal_id
+        createCustomerProfile.profile.merchantCustomerId = str(internal_id)
         createCustomerProfile.profile.email = email
 
         controller = createCustomerProfileController(createCustomerProfile)
@@ -90,9 +90,13 @@ class CustomerAPI(object):
         if response.messages.resultCode == "Ok":
             customer_profile_id = response.customerProfileId
         else:
-            raise AuthorizeResponseError(
-                "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
+            if response.messages.message[0]['code'].text == 'E00039':
+                customer_profile_id = filter(str.isdigit, response.messages.message[0]['text'].text)
+            else:
+                raise AuthorizeResponseError(
+                    "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
 
+        customer_payment_profile_id = None
         if payments:
             createCustomerPaymentProfile = apicontractsv1.createCustomerPaymentProfileRequest()
             createCustomerPaymentProfile.merchantAuthentication = self.merchantAuth
@@ -132,6 +136,7 @@ class CustomerAPI(object):
         creditCard = apicontractsv1.creditCardType()
         creditCard.cardNumber = credit_card.card_number
         creditCard.expirationDate = '{0.exp_year}-{0.exp_month:0>2}'.format(credit_card)
+        creditCard.cardCode = credit_card.cvv
 
         payment = apicontractsv1.paymentType()
         payment.creditCard = creditCard
@@ -145,6 +150,7 @@ class CustomerAPI(object):
         profile = apicontractsv1.customerPaymentProfileType()
         profile.payment = payment
         profile.billTo = billTo
+        self._address_to_profile(address, profile)
 
         if profile_id:
             createCustomerPaymentProfile = apicontractsv1.createCustomerPaymentProfileRequest()

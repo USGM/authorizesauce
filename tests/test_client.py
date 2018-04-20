@@ -104,10 +104,6 @@ class ClientTests(TestCase):
         result = card.save()
         self.assertEqual(self.client._customer.create_saved_payment.call_args,
             ((self.credit_card,), {'address': None}))
-        self.assertTrue(isinstance(
-            self.client._customer.create_saved_profile.call_args[0][0], str))
-        self.assertTrue(isinstance(
-            self.client._customer.create_saved_profile.call_args[0][1], list))
         self.assertTrue(isinstance(result, AuthorizeSavedCard))
         self.assertEqual(result.uid, '1|2')
 
