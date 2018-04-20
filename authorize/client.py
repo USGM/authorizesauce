@@ -141,10 +141,11 @@ class AuthorizeCreditCard(object):
         instance that you can save or use.
         """
         unique_id = uuid4().hex[:20]
-        payment = self._client._customer.create_saved_payment(
-            self.credit_card, address=self.address)
+        payment_profile = self._client._customer.create_saved_payment(
+            self.credit_card,
+            address=self.address)
         profile_id, payment_ids = self._client._customer \
-            .create_saved_profile(unique_id, [payment], email=self.email)
+            .create_saved_profile(unique_id, payment_profile, email=self.email)
         uid = '{0}|{1}'.format(profile_id, payment_ids[0])
         return self._client.saved_card(uid)
 

@@ -12,12 +12,19 @@ from authorize.apis.transaction import parse_response
 from authorize.exceptions import AuthorizeConnectionError, \
     AuthorizeError, AuthorizeResponseError, AuthorizeInvalidError
 
+from authorizenet import apicontractsv1
+from authorizenet.apicontrollers import *
+
 PROD_URL = 'https://api.authorize.net/soap/v1/Service.asmx?WSDL'
 TEST_URL = 'https://apitest.authorize.net/soap/v1/Service.asmx?WSDL'
 
 
 class CustomerAPI(object):
     def __init__(self, login_id, transaction_key, debug=True, test=False):
+        self.merchantAuth = apicontractsv1.merchantAuthenticationType()
+        self.merchantAuth.name = login_id
+        self.merchantAuth.transactionKey = transaction_key
+
         self.url = TEST_URL if debug else PROD_URL
         self.login_id = login_id
         self.transaction_key = transaction_key
@@ -69,20 +76,40 @@ class CustomerAPI(object):
         these will be automatically added to the user profile. Returns the
         user profile id.
         """
-        profile = self.client.factory.create('CustomerProfileType')
-        profile.merchantCustomerId = internal_id
-        profile.email = email
+        createCustomerProfile = apicontractsv1.createCustomerProfileRequest()
+        createCustomerProfile.merchantAuthentication = self.merchantAuth
+        createCustomerProfile.profile = apicontractsv1.customerProfileType()
+        createCustomerProfile.profile.merchantCustomerId = internal_id
+        createCustomerProfile.profile.email = email
+
+        controller = createCustomerProfileController(createCustomerProfile)
+        controller.execute()
+
+        response = controller.getresponse()
+
+        if response.messages.resultCode == "Ok":
+            customer_profile_id = response.customerProfileId
+        else:
+            raise AuthorizeResponseError(
+                "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
+
         if payments:
-            payment_array = self.client.factory.create(
-                'ArrayOfCustomerPaymentProfileType')
-            payment_array.CustomerPaymentProfileType = payments
-            profile.paymentProfiles = payment_array
-        response = self._make_call('CreateCustomerProfile', profile, 'none')
-        profile_id = response.customerProfileId
-        payment_ids = None
-        if payments:
-            payment_ids = response.customerPaymentProfileIdList[0]
-        return profile_id, payment_ids
+            createCustomerPaymentProfile = apicontractsv1.createCustomerPaymentProfileRequest()
+            createCustomerPaymentProfile.merchantAuthentication = self.merchantAuth
+            createCustomerPaymentProfile.paymentProfile = payments
+            createCustomerPaymentProfile.customerProfileId = str(customer_profile_id)
+
+            controller = createCustomerPaymentProfileController(createCustomerPaymentProfile)
+            controller.execute()
+
+            response = controller.getresponse()
+            if response.messages.resultCode == "Ok":
+                customer_payment_profile_id = response.customerPaymentProfileId
+            else:
+                raise AuthorizeResponseError(
+                    "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
+
+        return customer_profile_id, customer_payment_profile_id
 
     @staticmethod
     def _address_to_profile(address, payment_profile):
@@ -100,40 +127,42 @@ class CustomerAPI(object):
 
     def create_saved_payment(self, credit_card, address=None, profile_id=None):
         """
-        Creates a payment profile. If profile_id is provided, this payment
-        profile will be created in Authorize.net attached to that profile.
-        If it is not provided, the payment profile will be returned and can
-        be provided in a list to the create_profile call.
+        Creates a payment profile.
         """
-        # Create the basic payment profile with credit card details
-        payment_profile = self.client.factory.create(
-            'CustomerPaymentProfileType')
-        customer_type_enum = self.client.factory.create('CustomerTypeEnum')
-        payment_profile.customerType = customer_type_enum.individual
-        payment_type = self.client.factory.create('PaymentType')
-        credit_card_type = self.client.factory.create('CreditCardType')
-        credit_card_type.cardNumber = credit_card.card_number
-        credit_card_type.expirationDate = '{0.exp_year}-{0.exp_month:0>2}' \
-            .format(credit_card)
-        credit_card_type.cardCode = credit_card.cvv
-        payment_type.creditCard = credit_card_type
-        payment_profile.payment = payment_type
+        creditCard = apicontractsv1.creditCardType()
+        creditCard.cardNumber = credit_card.card_number
+        creditCard.expirationDate = '{0.exp_year}-{0.exp_month:0>2}'.format(credit_card)
 
-        # Customer billing name and address are optional fields
+        payment = apicontractsv1.paymentType()
+        payment.creditCard = creditCard
+
+        billTo = apicontractsv1.customerAddressType()
         if credit_card.first_name:
-            payment_profile.billTo.firstName = credit_card.first_name
+            billTo.firstName = credit_card.first_name
         if credit_card.last_name:
-            payment_profile.billTo.lastName = credit_card.last_name
-        payment_profile = self._address_to_profile(address, payment_profile)
+            billTo.lastName = credit_card.last_name
 
-        # If a profile id is provided, create saved payment on that profile
-        # Otherwise, return an object for a later call to create_saved_profile
+        profile = apicontractsv1.customerPaymentProfileType()
+        profile.payment = payment
+        profile.billTo = billTo
+
         if profile_id:
-            response = self._make_call('CreateCustomerPaymentProfile',
-                profile_id, payment_profile, 'none')
-            return response.customerPaymentProfileId
+            createCustomerPaymentProfile = apicontractsv1.createCustomerPaymentProfileRequest()
+            createCustomerPaymentProfile.merchantAuthentication = self.merchantAuth
+            createCustomerPaymentProfile.paymentProfile = profile
+            createCustomerPaymentProfile.customerProfileId = str(profile_id)
+
+            controller = createCustomerPaymentProfileController(createCustomerPaymentProfile)
+            controller.execute()
+
+            response = controller.getresponse()
+            if response.messages.resultCode == "Ok":
+                return response.customerPaymentProfileId
+            else:
+                raise AuthorizeResponseError(
+                    "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
         else:
-            return payment_profile
+            return profile
 
     def retrieve_saved_payment(self, profile_id, payment_id):
         payment_id = int(payment_id)
