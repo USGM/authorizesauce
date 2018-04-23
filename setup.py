@@ -72,6 +72,7 @@ setup(
     install_requires=[
         'suds-jurko>=0.6',
         'six>=1.9.0',
+        'authorizenet==1.0.15'
     ],
     packages=[
         'authorize',
