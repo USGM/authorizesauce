@@ -88,13 +88,16 @@ PROFILE_RESPONSE = AttrDict({
     'profile': PROFILES_WRAPPER
 })
 
+TEST_API_LOGIN = ''
+TEST_API_KEY = ''
+
 
 class CustomerAPITests(TestCase):
     def setUp(self):
         self.patcher = mock.patch(
             'authorize.apis.customer.Client')
         self.Client = self.patcher.start()
-        self.api = CustomerAPI('7Cz6k5V9n', '3c5Z5Rwf8495aqK8')
+        self.api = CustomerAPI(TEST_API_LOGIN, TEST_API_KEY)
 
         # Make the factory creator return mocks that know what kind they are
         def create(kind):
