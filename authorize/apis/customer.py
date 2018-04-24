@@ -25,6 +25,9 @@ class CustomerAPI(object):
         self.merchantAuth.name = login_id
         self.merchantAuth.transactionKey = transaction_key
 
+        self.debug = debug
+        self.test = test
+
         self.url = TEST_URL if debug else PROD_URL
         self.login_id = login_id
         self.transaction_key = transaction_key
@@ -83,6 +86,8 @@ class CustomerAPI(object):
         createCustomerProfile.profile.email = email
 
         controller = createCustomerProfileController(createCustomerProfile)
+        if not self.debug:
+            controller.setenvironment(constants.PRODUCTION)
         controller.execute()
 
         response = controller.getresponse()
@@ -104,6 +109,8 @@ class CustomerAPI(object):
             createCustomerPaymentProfile.customerProfileId = str(customer_profile_id)
 
             controller = createCustomerPaymentProfileController(createCustomerPaymentProfile)
+            if not self.debug:
+                controller.setenvironment(constants.PRODUCTION)
             controller.execute()
 
             response = controller.getresponse()
@@ -159,6 +166,8 @@ class CustomerAPI(object):
             createCustomerPaymentProfile.customerProfileId = str(profile_id)
 
             controller = createCustomerPaymentProfileController(createCustomerPaymentProfile)
+            if not self.debug:
+                controller.setenvironment(constants.PRODUCTION)
             controller.execute()
 
             response = controller.getresponse()
@@ -250,7 +259,7 @@ class CustomerAPI(object):
 
     def delete_saved_payment(self, profile_id, payment_id):
         self._make_call('DeleteCustomerPaymentProfile',
-            profile_id, payment_id)
+                        profile_id, payment_id)
 
     def auth(self, profile_id, payment_id, amount, cvv=None):
         if cvv is not None:
@@ -267,7 +276,7 @@ class CustomerAPI(object):
         auth.cardCode = cvv
         transaction.profileTransAuthOnly = auth
         response = self._make_call('CreateCustomerProfileTransaction',
-            transaction, self.transaction_options)
+                                   transaction, self.transaction_options)
         return parse_response(response.directResponse)
 
     def capture(self, profile_id, payment_id, amount, cvv=None):
@@ -285,7 +294,7 @@ class CustomerAPI(object):
         capture.cardCode = cvv
         transaction.profileTransAuthCapture = capture
         response = self._make_call('CreateCustomerProfileTransaction',
-            transaction, self.transaction_options)
+                                   transaction, self.transaction_options)
         return parse_response(response.directResponse)
 
     def credit(self, profile_id, payment_id, amount):
@@ -298,5 +307,5 @@ class CustomerAPI(object):
         credit.customerPaymentProfileId = payment_id
         transaction.profileTransRefund = credit
         response = self._make_call('CreateCustomerProfileTransaction',
-            transaction, self.transaction_options)
+                                   transaction, self.transaction_options)
         return parse_response(response.directResponse)
