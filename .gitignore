@@ -8,3 +8,7 @@ build/
 dist/
 AuthorizeSauce.egg-info/
 env/
+/.env
+/.project
+/.pydevproject
+/anetsdk.log
