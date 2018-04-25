@@ -99,7 +99,8 @@ class CustomerAPI(object):
                 customer_profile_id = filter(str.isdigit, response.messages.message[0]['text'].text)
             else:
                 raise AuthorizeResponseError(
-                    "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
+                    "Failed to create customer profile: %s, debug mode: %s" % (
+                        response.messages.message[0]['text'].text, self.debug))
 
         customer_payment_profile_id = None
         if payments:
@@ -118,7 +119,7 @@ class CustomerAPI(object):
                 customer_payment_profile_id = response.customerPaymentProfileId
             else:
                 raise AuthorizeResponseError(
-                    "Failed to create customer payment profile %s" % response.messages.message[0]['text'].text)
+                    "Failed to create customer payment profile: %s" % response.messages.message[0]['text'].text)
 
         return customer_profile_id, customer_payment_profile_id
 
