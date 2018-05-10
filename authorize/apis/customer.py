@@ -190,10 +190,11 @@ class CustomerAPI(object):
             email = text_type(profile.email)
         payment_info['email'] = email
         saved_payment = None
-        for payment in profile.paymentProfiles[0]:
-            if payment.customerPaymentProfileId == payment_id:
-                saved_payment = payment
-                break
+        if hasattr(profile, 'paymentProfiles'):
+            for payment in profile.paymentProfiles[0]:
+                if payment.customerPaymentProfileId == payment_id:
+                    saved_payment = payment
+                    break
         if not saved_payment:
             raise AuthorizeError("Payment ID does not exist for this profile.")
         payment_info['number'] = text_type(
