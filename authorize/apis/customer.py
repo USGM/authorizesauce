@@ -311,3 +311,28 @@ class CustomerAPI(object):
         response = self._make_call('CreateCustomerProfileTransaction',
                                    transaction, self.transaction_options)
         return parse_response(response.directResponse)
+
+    def get_transaction_list(self, profile_id):
+        transaction_list_request = apicontractsv1.getTransactionListForCustomerRequest()
+        transaction_list_request.merchantAuthentication = self.merchantAuth
+        transaction_list_request.customerProfileId = profile_id
+
+        transaction_list_controller = getTransactionListForCustomerController(transaction_list_request)
+        transaction_list_controller.execute()
+
+        transaction_list_response = transaction_list_controller.getresponse()
+        transactions = []
+        if transaction_list_response is not None:
+            if transaction_list_response.messages.resultCode == apicontractsv1.messageTypeEnum.Ok:
+                try:
+                    for transaction in transaction_list_response.transactions.transaction:
+                        transactions.append({
+                            'id': transaction.transId,
+                            'status': transaction.transactionStatus,
+                            'type': transaction.accountType,
+                            'amount': transaction.settleAmount
+                        })
+                except AttributeError:
+                    pass
+
+        return transactions
